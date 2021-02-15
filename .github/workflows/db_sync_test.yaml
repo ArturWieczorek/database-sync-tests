@@ -90,7 +90,7 @@ jobs:
         path: cardano-db-sync
     - name: Enter repo
       run: |
-        cd cardano-sb-sync
+        cd cardano-db-sync
     - name: Select build directory
       run: |
         echo "CABAL_BUILDDIR=dist"              >> $GITHUB_ENV
