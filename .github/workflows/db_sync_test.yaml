@@ -19,7 +19,7 @@ jobs:
         env: [mainnet]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 90
     steps:
       - name: checkout database-sync-tests repo
         uses: actions/checkout@v2
@@ -72,7 +72,8 @@ jobs:
       matrix:
         ghc: ["8.6.5"]
         os: [ubuntu-latest]
-    timeout-minutes: 5
+        env: [mainnet]
+    timeout-minutes: 90
     steps:
     - name: checkout cardano-db-sync repo
       uses: actions/checkout@v2
@@ -146,12 +147,18 @@ jobs:
 
     - name: Configure to use libsodium
       run: |
+        cd cardano-db-sync
         cat >> cabal.project.local <<EOF
         package cardano-crypto-praos
           flags: -external-libsodium-vrf
         EOF
     - name: Record dependencies
       run: |
+        echo "I am here:"
+        echo $PWD
+        echo "List:"
+        ls -l
+        cd cardano-db-sync
         cat ${{ env.PLAN_JSON }} | jq -r '."install-plan"[].id' | sort > dependencies.txt
     - uses: actions/cache@v2
       name: Cache cabal store
@@ -161,24 +168,26 @@ jobs:
         restore-keys: |
           cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}
           cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-
-    - name: Build dependencies
-      run: cabal build all --builddir="$CABAL_BUILDDIR" --only-dependencies
 
     - name: Build
-      run: cabal build all --builddir="$CABAL_BUILDDIR"
+      run: |
+        echo "I am here:"
+        echo $PWD
+        echo "List:"
+        ls -l
+        cd cardano-db-sync
+        cabal build cardano-db-sync-extended --builddir="$CABAL_BUILDDIR"
 
     - name: Set up database user (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: sudo -u postgres createuser --createdb --superuser runner
 
-    - name: Set up database
+    - name: Setup and Start db-sync
       run: |
-        cardano_db_sync_exe="$(cat $CABAL_BUILDDIR/cache/plan.json | jq -r '."install-plan"[] | select(."component-name" == "exe:cardano-db-sync") | ."bin-file"' | head)"
-        echo "Executable found at: $cardano_db_sync_exe"
-        chmod 600 config/pgpass-mainnet
-        PGPASSFILE=config/pgpass-mainnet scripts/postgresql-setup.sh --createdb
-    - name: Start db-sync
-      run: |
+        echo "I am here:"
+        echo $PWD
+        ls -l
+        cd cardano-db-sync
         environment=${{ matrix.env }}
         cardano_db_sync_exe="$(cat $CABAL_BUILDDIR/cache/plan.json | jq -r '."install-plan"[] | select(."component-name" == "exe:cardano-db-sync") | ."bin-file"' | head)"
         echo "Executable found at: $cardano_db_sync_exe"

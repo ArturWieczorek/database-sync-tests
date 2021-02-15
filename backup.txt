@@ -147,3 +147,22 @@ run_node:
     timeout-minutes: 600
     steps:
 
+
+=================================================================================
+
+cabal build all returns
+
+sync/dist/build/x86_64-linux/ghc-8.6.5/cardano-db-sync-8.0.0/build/Cardano/DbSync/Plugin/Default.o )
+[19 of 19] Compiling Cardano.DbSync   ( src/Cardano/DbSync.hs, /home/runner/work/database-sync-tests/database-sync-tests/cardano-db-sync/dist/build/x86_64-linux/ghc-8.6.5/cardano-db-sync-8.0.0/build/Cardano/DbSync.o )
+cabal: Failed to build exe:cardano-db-tool from cardano-db-tool-8.0.0.
+
+================================================================================
+
+Run echo "I am here:"
+I am here:
+/home/runner/work/database-sync-tests/database-sync-tests
+total 4
+drwxr-xr-x 18 runner docker 4096 Feb 15 23:47 cardano-db-sync
+Executable found at: /home/runner/work/database-sync-tests/database-sync-tests/cardano-db-sync/dist/build/x86_64-linux/ghc-8.6.5/cardano-db-sync-8.0.0/x/cardano-db-sync/build/cardano-db-sync/cardano-db-sync
+chmod: cannot access 'config/pgpass-': No such file or directory
+
