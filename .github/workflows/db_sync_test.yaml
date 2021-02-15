@@ -79,10 +79,6 @@ jobs:
         os: [ubuntu-latest]
     timeout-minutes: 5
     steps:
-    - name: checkout database-sync-tests repo
-      uses: actions/checkout@v2
-      with:
-        path: database-sync-tests
     - name: checkout cardano-db-sync repo
       uses: actions/checkout@v2
       with:
