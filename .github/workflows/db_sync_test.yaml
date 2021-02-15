@@ -88,9 +88,6 @@ jobs:
       with:
         repository: input-output-hk/cardano-db-sync
         path: cardano-db-sync
-    - name: Enter repo
-      run: |
-        cd cardano-db-sync
     - name: Select build directory
       run: |
         echo "CABAL_BUILDDIR=dist"              >> $GITHUB_ENV
