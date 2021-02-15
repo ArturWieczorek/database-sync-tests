@@ -140,7 +140,9 @@ jobs:
         ls -l
 
     - name: Cabal Configure
-      run: cabal configure --builddir="$CABAL_BUILDDIR" --write-ghc-environment-files=always
+      run: |
+        cd cardano-db-sync
+        cabal configure --builddir="$CABAL_BUILDDIR" --write-ghc-environment-files=always
 
     - name: Configure to use libsodium
       run: |
