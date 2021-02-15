@@ -136,6 +136,8 @@ jobs:
       run: |
         echo "I am here:"
         echo $PWD
+        echo "List:"
+        ls -l
 
     - name: Cabal Configure
       run: cabal configure --builddir="$CABAL_BUILDDIR" --write-ghc-environment-files=always
