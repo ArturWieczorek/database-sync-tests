@@ -74,14 +74,10 @@ jobs:
         os: [ubuntu-latest]
     timeout-minutes: 5
     steps:
-    - name: checkout cardano-db-sync repo
-      uses: actions/checkout@v2
-        with:
-          repository: input-output-hk/cardano-db-sync
+    - uses: actions/checkout@v1
 
     - name: Select build directory
       run: |
-        cd cardano-db-sync
         echo "CABAL_BUILDDIR=dist"              >> $GITHUB_ENV
         echo "PLAN_JSON=dist/cache/plan.json"   >> $GITHUB_ENV
         echo "$HOME/.cabal/bin"                 >> $GITHUB_PATH
