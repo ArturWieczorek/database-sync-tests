@@ -135,6 +135,11 @@ jobs:
     - name: Cabal update
       run: cabal update
 
+    - name: Check current directory
+      run: |
+        echo "I am here:"
+        echo $PWD
+
     - name: Cabal Configure
       run: cabal configure --builddir="$CABAL_BUILDDIR" --write-ghc-environment-files=always
 
