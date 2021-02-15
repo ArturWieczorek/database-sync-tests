@@ -30,11 +30,6 @@ jobs:
         with:
           repository: input-output-hk/cardano-node
           path: cardano-node
-      - name: checkout cardano-db-sync repo
-        uses: actions/checkout@v2
-        with:
-          repository: input-output-hk/cardano-db-sync
-          path: cardano-db-sync
       - name: print test details
         run: |
           echo "node_tag: ${{ github.event.inputs.node_tag }}"
