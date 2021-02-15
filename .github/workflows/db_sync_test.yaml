@@ -79,6 +79,12 @@ jobs:
       with:
         repository: input-output-hk/cardano-db-sync
         path: cardano-db-sync
+    - name: cardano-db-sync - fetch all tags
+      run: |
+        cd cardano-db-sync
+        git checkout master
+        git pull origin master
+        git fetch --all --tags
     - name: Select build directory
       run: |
         echo "CABAL_BUILDDIR=dist"              >> $GITHUB_ENV
