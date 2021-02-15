@@ -113,7 +113,10 @@ jobs:
 
     - name: Select cabal version
       run: |
-          echo "CABAL_VERSION=3.4.0.0-rc4"  >> $GITHUB_ENV;;
+        case "$OS" in
+          Windows_NT)   echo "CABAL_VERSION=3.2.0.0"      >> $GITHUB_ENV;;
+          *)            echo "CABAL_VERSION=3.4.0.0-rc4"  >> $GITHUB_ENV;;
+        esac
     - uses: haskell/actions/setup@v1
       id: setup-haskell
       with:
