@@ -30,6 +30,11 @@ jobs:
         with:
           repository: input-output-hk/cardano-node
           path: cardano-node
+      - name: checkout cardano-db-sync repo
+        uses: actions/checkout@v2
+        with:
+          repository: input-output-hk/cardano-db-sync
+          path: cardano-db-sync
       - name: print test details
         run: |
           echo "node_tag: ${{ github.event.inputs.node_tag }}"
@@ -70,12 +75,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["8.6.5", "8.10.3"]
+        ghc: ["8.6.5"]
         os: [ubuntu-latest]
     timeout-minutes: 5
     steps:
-    - uses: actions/checkout@v1
-
+    - name: checkout database-sync-tests repo
+      uses: actions/checkout@v2
+      with:
+        path: database-sync-tests
+    - name: checkout cardano-db-sync repo
+      uses: actions/checkout@v2
+      with:
+        repository: input-output-hk/cardano-db-sync
+        path: cardano-db-sync
+    - name: Enter repo
+      run: |
+        cd cardano-sb-sync
     - name: Select build directory
       run: |
         echo "CABAL_BUILDDIR=dist"              >> $GITHUB_ENV
