@@ -1,0 +1,176 @@
+name: db-sync sync tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      node_tag:
+        description: node version to be used with db-sync
+        required: true
+      db_sync_tag:
+        description: db-sync version to be used. By default the latest release will be used
+        required: false
+        default: "None"
+
+jobs:
+  run_node:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        env: [mainnet]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - name: checkout database-sync-tests repo
+        uses: actions/checkout@v2
+        with:
+          path: database-sync-tests
+      - name: checkout cardano-node repo
+        uses: actions/checkout@v2
+        with:
+          repository: input-output-hk/cardano-node
+          path: cardano-node
+      - name: print test details
+        run: |
+          echo "node_tag: ${{ github.event.inputs.node_tag }}"
+      - name: cardano-node - fetch all tags
+        run: |
+          cd cardano-node
+          git checkout master
+          git pull origin master
+          git fetch --all --tags
+      - name: run actions/setup-python@v2
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install dependencies
+        run: |
+          pip install requests
+          pip install psutil
+          pip install sqlite-utils>=2.18
+          sqlite-utils --version
+          pip install pandas
+      - name: run sync test
+        run: |
+          cd database-sync-tests
+          cd ..
+          python database-sync-tests/start_node.py -nt "${{ github.event.inputs.node_tag }}" -e ${{ matrix.env }}
+      - name: generate artifacts
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: node_logs_${{ matrix.env }}_${{ matrix.os }}
+          path: database-sync-tests/logfile.log
+  build_db_sync:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ["8.6.5", "8.10.3"]
+        os: [ubuntu-latest]
+    timeout-minutes: 5
+    steps:
+    - name: checkout cardano-db-sync repo
+      uses: actions/checkout@v2
+        with:
+          repository: input-output-hk/cardano-db-sync
+          path: cardano-db-sync
+    - uses: actions/checkout@v1
+
+    - name: Select build directory
+      run: |
+        cd cardano-db-sync
+        echo "CABAL_BUILDDIR=dist"              >> $GITHUB_ENV
+        echo "PLAN_JSON=dist/cache/plan.json"   >> $GITHUB_ENV
+        echo "$HOME/.cabal/bin"                 >> $GITHUB_PATH
+
+    - name: Install Postgres (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpq-dev libpq5 postgresql
+        sudo pg_ctlcluster 13 main start
+
+    - name: Check if postgres is running
+      run: |
+        sleep 20
+        netstat -an
+        ls -al /var/run/postgresql/.s.PGSQL.5432 || true
+        ls -al || true
+
+    - name: Select cabal version
+      run: |
+          echo "CABAL_VERSION=3.4.0.0-rc4"  >> $GITHUB_ENV;;
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: ${{ env.CABAL_VERSION }}
+
+    - name: Haskell versions
+      run: |
+        ghc --version
+        cabal --version
+    - name: Install build environment
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install libsodium23 libsodium-dev
+        sudo apt-get -y install libsystemd0 libsystemd-dev
+        sudo apt-get -y remove --purge software-properties-common
+        sudo apt-get -y autoremove
+    - name: Cabal update
+      run: cabal update
+
+    - name: Cabal Configure
+      run: cabal configure --builddir="$CABAL_BUILDDIR" --write-ghc-environment-files=always
+
+    - name: Configure to use libsodium
+      run: |
+        cat >> cabal.project.local <<EOF
+        package cardano-crypto-praos
+          flags: -external-libsodium-vrf
+        EOF
+    - name: Record dependencies
+      run: |
+        cat ${{ env.PLAN_JSON }} | jq -r '."install-plan"[].id' | sort > dependencies.txt
+    - uses: actions/cache@v2
+      name: Cache cabal store
+      with:
+        path: ${{ steps.setup-haskell.outputs.cabal-store }}
+        key: cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}
+        restore-keys: |
+          cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}
+          cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-
+    - name: Build dependencies
+      run: cabal build all --builddir="$CABAL_BUILDDIR" --only-dependencies
+
+    - name: Build
+      run: cabal build all --builddir="$CABAL_BUILDDIR"
+
+    - name: Set up database user (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo -u postgres createuser --createdb --superuser runner
+
+    - name: Set up database
+      run: |
+        cardano_db_sync_exe="$(cat $CABAL_BUILDDIR/cache/plan.json | jq -r '."install-plan"[] | select(."component-name" == "exe:cardano-db-sync") | ."bin-file"' | head)"
+        echo "Executable found at: $cardano_db_sync_exe"
+        chmod 600 config/pgpass-mainnet
+        PGPASSFILE=config/pgpass-mainnet scripts/postgresql-setup.sh --createdb
+    - name: Start db-sync
+      run: |
+        environment=${{ matrix.env }}
+        cardano_db_sync_exe="$(cat $CABAL_BUILDDIR/cache/plan.json | jq -r '."install-plan"[] | select(."component-name" == "exe:cardano-db-sync") | ."bin-file"' | head)"
+        echo "Executable found at: $cardano_db_sync_exe"
+        chmod 600 config/pgpass-${environment}
+        PGPASSFILE=config/pgpass-${environment} scripts/postgresql-setup.sh --createdb
+        PGPASSFILE=config/pgpass-${environment} cabal run cardano-db-sync-extended -- \
+        --config config/${environment}-config.yaml \
+        --socket-path ../db/${environment}/node.socket \
+        --state-dir ledger-state/${environment} \
+        --schema-dir schema/
