@@ -185,8 +185,6 @@ jobs:
       run: |
         echo "I am here:"
         echo $PWD
-        ls -l
-        cd ..
-        echo $PWD
-        ls -l
+        ls -l ..\
+        ls -l ..\..\
         ./start_db_sync.sh ${{ matrix.env }}
