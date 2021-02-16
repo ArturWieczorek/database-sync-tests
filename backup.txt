@@ -166,3 +166,17 @@ drwxr-xr-x 18 runner docker 4096 Feb 15 23:47 cardano-db-sync
 Executable found at: /home/runner/work/database-sync-tests/database-sync-tests/cardano-db-sync/dist/build/x86_64-linux/ghc-8.6.5/cardano-db-sync-8.0.0/x/cardano-db-sync/build/cardano-db-sync/cardano-db-sync
 chmod: cannot access 'config/pgpass-': No such file or directory
 
+============================
+
+
+    - name: Build
+      run: |
+        echo "I am here:"
+        echo $PWD
+        echo "List:"
+        ls -l
+        cd cardano-db-sync
+        cabal build cardano-db-sync-extended --builddir="$CABAL_BUILDDIR"
+
+    - name: Set up database user (Linux)
+
