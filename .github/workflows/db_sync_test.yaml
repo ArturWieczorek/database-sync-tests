@@ -59,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: node_logs_${{ matrix.env }}_${{ matrix.os }}
+          name: node_logs__${{ matrix.os }}
           path: database-sync-tests/logfile.log
   build_db_sync:
     runs-on: ${{ matrix.os }}
@@ -176,7 +176,6 @@ jobs:
         echo "List:"
         ls -l
         cd cardano-db-sync
-        cabal build cardano-db-sync-extended --builddir="$CABAL_BUILDDIR"
 
     - name: Set up database user (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -187,14 +186,7 @@ jobs:
         echo "I am here:"
         echo $PWD
         ls -l
-        cd cardano-db-sync
-        environment=${{ matrix.env }}
-        cardano_db_sync_exe="$(cat $CABAL_BUILDDIR/cache/plan.json | jq -r '."install-plan"[] | select(."component-name" == "exe:cardano-db-sync") | ."bin-file"' | head)"
-        echo "Executable found at: $cardano_db_sync_exe"
-        chmod 600 config/pgpass-${environment}
-        PGPASSFILE=config/pgpass-${environment} scripts/postgresql-setup.sh --createdb
-        PGPASSFILE=config/pgpass-${environment} cabal run cardano-db-sync-extended -- \
-        --config config/${environment}-config.yaml \
-        --socket-path ../db/node.socket \
-        --state-dir ledger-state/${environment} \
-        --schema-dir schema/
+        cd ..
+        echo $PWD
+        ls -l
+        ./start_db_sync.sh ${{ matrix.env }}
