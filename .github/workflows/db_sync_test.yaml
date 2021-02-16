@@ -195,6 +195,6 @@ jobs:
         PGPASSFILE=config/pgpass-${environment} scripts/postgresql-setup.sh --createdb
         PGPASSFILE=config/pgpass-${environment} cabal run cardano-db-sync-extended -- \
         --config config/${environment}-config.yaml \
-        --socket-path ../db/${environment}/node.socket \
+        --socket-path ../db/node.socket \
         --state-dir ledger-state/${environment} \
         --schema-dir schema/

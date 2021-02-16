@@ -90,9 +90,7 @@ PGPASSFILE=config/pgpass-mainnet cabal run cardano-db-sync-extended -- \
 --state-dir ledger-state/mainnet \
 --schema-dir schema/
 
-EOF
-}
-
+//////////////////////////////
 
 MODIFIED_NETWORK_NAME=$(echo "${network}" | sed 's/-/_/')
 
@@ -104,4 +102,12 @@ PGPASSFILE=config/pgpass-${network} db-sync-node-extended/bin/cardano-db-sync-ex
 --state-dir ledger-state/${MODIFIED_NETWORK_NAME} \
 --schema-dir schema/
 
-fi
+//////////////////////////////
+
+EOF
+}
+
+
+environment=$1
+
+echo "Getting environment from script: $environment"
