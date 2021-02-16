@@ -109,7 +109,7 @@ EOF
 
 
 environment=$1
-
+cd ../cardano-db-sync
 
 cardano_db_sync_exe="$(cat $CABAL_BUILDDIR/cache/plan.json | jq -r '."install-plan"[] | select(."component-name" == "exe:cardano-db-sync") | ."bin-file"' | head)"
 echo "Executable found at: $cardano_db_sync_exe"
@@ -117,14 +117,14 @@ echo "Executable found at: $cardano_db_sync_exe"
 chmod 600 config/pgpass-${environment}
 PGPASSFILE=config/pgpass-${environment} scripts/postgresql-setup.sh --createdb
 
-echo "checking above dir structure:"
-ls -l ../
+#echo "checking above dir structure:"
+#ls -l ../
 
-echo "checking 2x above dir structure:"
-ls -l ../../
+#echo "checking 2x above dir structure:"
+#ls -l ../../
 
 PGPASSFILE=config/pgpass-${environment} cabal run cardano-db-sync-extended -- \
 --config config/${environment}-config.yaml \
---socket-path ../db/node.socket \
+--socket-path ../cardano-node/${environment}/node.socket \
 --state-dir ledger-state/${environment} \
 --schema-dir schema/

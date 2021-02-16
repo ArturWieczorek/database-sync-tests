@@ -279,14 +279,14 @@ def start_node_unix(env, tag_no):
         f"{NODE} run --topology {env}-topology.json --database-path "
         f"{Path(CARDANO_NODE_TESTS_PATH) / 'db'} "
         f"--host-addr 0.0.0.0 --port 3000 --config "
-        f"{env}-config.json --socket-path ./db/node.socket"
+        f"{env}-config.json --socket-path /db/node.socket"
     )
 
     logfile = open("logfile.log", "w+")
     print(f"cmd: {cmd}")
 
     try:
-        subprocess.Popen(cmd.split(" "), stdout=logfile, stderr=subprocess.PIPE)
+        subprocess.run(cmd.split(" "), stdout=logfile, stderr=subprocess.PIPE)
         print("waiting for db folder to be created")
         count = 0
         while not os.path.isdir(current_directory / "db"):
@@ -322,10 +322,6 @@ def stop_node():
             print(f" --- ERROR: `cardano-node` process is still active - {proc}")
 
 
-def percentage(part, whole):
-    return round(100 * float(part) / float(whole), 2)
-
-
 def get_current_date_time():
     now = datetime.now()
     return now.strftime("%d/%m/%Y %H:%M:%S")
@@ -333,157 +329,6 @@ def get_current_date_time():
 
 def get_file_creation_date(path_to_file):
     return time.ctime(os.path.getmtime(path_to_file))
-
-
-def get_size(start_path='.'):
-    # returns directory size in bytes
-    total_size = 0
-    for dirpath, dirnames, filenames in os.walk(start_path):
-        for f in filenames:
-            fp = os.path.join(dirpath, f)
-            total_size += os.path.getsize(fp)
-    return total_size
-
-
-def wait_for_node_to_sync(env, tag_no):
-    sync_details_dict = OrderedDict()
-    count = 0
-    last_byron_slot_no, last_shelley_slot_no, latest_slot_no = get_calculated_slot_no(env)
-
-    actual_slot_no = get_current_tip(tag_no)[2]
-    start_sync = time.perf_counter()
-
-    while actual_slot_no <= last_byron_slot_no:
-        value_dict = {
-            "actual_slot_not": actual_slot_no,
-            "actual_sync_percent": percentage(actual_slot_no, latest_slot_no),
-            "actual_date_time": get_current_date_time(),
-        }
-        sync_details_dict[count] = value_dict
-
-        print(
-            f"  - actual_slot_no (Byron era): "
-            f"{actual_slot_no} - {percentage(actual_slot_no, latest_slot_no)} % --> "
-            f"{get_current_date_time()}"
-        )
-        time.sleep(15)
-        count += 1
-        actual_slot_no = get_current_tip(tag_no)[2]
-
-    end_byron_sync = time.perf_counter()
-    byron_sync_time_seconds = int(end_byron_sync - start_sync)
-
-    while actual_slot_no <= last_shelley_slot_no:
-        value_dict = {
-            "actual_slot_not": actual_slot_no,
-            "actual_sync_percent": percentage(actual_slot_no, latest_slot_no),
-            "actual_date_time": get_current_date_time(),
-        }
-        sync_details_dict[count] = value_dict
-
-        print(
-            f"  - actual_slot_no (Shelley era): "
-            f"{actual_slot_no} - {percentage(actual_slot_no, latest_slot_no)} % --> "
-            f"{get_current_date_time()}"
-        )
-        time.sleep(15)
-        count += 1
-        actual_slot_no = get_current_tip(tag_no)[2]
-
-    end_shelley_sync = time.perf_counter()
-    shelley_sync_time_seconds = int(end_shelley_sync - end_byron_sync)
-
-    if last_shelley_slot_no != latest_slot_no:
-        while actual_slot_no < latest_slot_no:
-            value_dict = {
-                "actual_slot_not": actual_slot_no,
-                "actual_sync_percent": percentage(actual_slot_no, latest_slot_no),
-                "actual_date_time": get_current_date_time(),
-            }
-            sync_details_dict[count] = value_dict
-
-            print(
-                f"  - actual_slot_no (Allegra era): "
-                f"{actual_slot_no} - {percentage(actual_slot_no, latest_slot_no)} % --> "
-                f"{get_current_date_time()}"
-            )
-            time.sleep(15)
-            count += 1
-            actual_slot_no = get_current_tip(tag_no)[2]
-
-        end_allegra_sync = time.perf_counter()
-        allegra_sync_time_seconds = int(end_allegra_sync - end_shelley_sync)
-    else:
-        allegra_sync_time_seconds = 0
-
-    # include also the last value into the db/dict (100%)
-    value_dict = {
-        "actual_slot_not": actual_slot_no,
-        "actual_sync_percent": percentage(actual_slot_no, latest_slot_no),
-        "actual_date_time": get_current_date_time(),
-    }
-    sync_details_dict[count] = value_dict
-
-    os.chdir(Path(CARDANO_NODE_TESTS_PATH) / "db" / "immutable")
-    chunk_files = sorted(os.listdir(os.getcwd()), key=os.path.getmtime)
-    newest_chunk = chunk_files[-1]
-    os.chdir(Path(CARDANO_NODE_TESTS_PATH))
-    print(f"Sync done!; newest_chunk: {newest_chunk}")
-    return newest_chunk, byron_sync_time_seconds, shelley_sync_time_seconds, \
-           allegra_sync_time_seconds, sync_details_dict
-
-
-def date_diff_in_seconds(dt2, dt1):
-    timedelta = dt2 - dt1
-    return timedelta.days * 24 * 3600 + timedelta.seconds
-
-
-def get_calculated_slot_no(env):
-    current_time = datetime.utcnow()
-    allegra_start_time = current_time
-
-    if env == "testnet":
-        byron_start_time = datetime.strptime("2019-07-24 20:20:16", "%Y-%m-%d %H:%M:%S")
-        shelley_start_time = datetime.strptime("2020-07-28 20:20:16", "%Y-%m-%d %H:%M:%S")
-        allegra_start_time = datetime.strptime("2020-12-15 20:20:16", "%Y-%m-%d %H:%M:%S")
-    elif env == "staging":
-        byron_start_time = datetime.strptime("2017-09-26 18:23:33", "%Y-%m-%d %H:%M:%S")
-        shelley_start_time = datetime.strptime("2020-08-01 18:23:33", "%Y-%m-%d %H:%M:%S")
-        allegra_start_time = datetime.strptime("2020-12-19 18:23:33", "%Y-%m-%d %H:%M:%S")
-    elif env == "mainnet":
-        byron_start_time = datetime.strptime("2017-09-23 21:44:51", "%Y-%m-%d %H:%M:%S")
-        shelley_start_time = datetime.strptime("2020-07-29 21:44:51", "%Y-%m-%d %H:%M:%S")
-        allegra_start_time = datetime.strptime("2020-12-16 21:44:51", "%Y-%m-%d %H:%M:%S")
-    elif env == "shelley_qa":
-        byron_start_time = datetime.strptime("2020-08-17 13:00:00", "%Y-%m-%d %H:%M:%S")
-        shelley_start_time = datetime.strptime("2020-08-17 17:00:00", "%Y-%m-%d %H:%M:%S")
-        allegra_start_time = datetime.strptime("2020-12-07 19:00:00", "%Y-%m-%d %H:%M:%S")
-
-    last_byron_slot_no = int(date_diff_in_seconds(shelley_start_time, byron_start_time) / 20)
-    last_shelley_slot_no = int(date_diff_in_seconds(allegra_start_time, shelley_start_time) +
-                               last_byron_slot_no)
-    if allegra_start_time != current_time:
-        last_allegra_slot_no = int(date_diff_in_seconds(current_time, allegra_start_time) +
-                                   last_shelley_slot_no)
-    else:
-        last_allegra_slot_no = 0
-
-    latest_slot_no = int(date_diff_in_seconds(shelley_start_time, byron_start_time) / 20 +
-                         date_diff_in_seconds(current_time, shelley_start_time))
-
-    print("----------------------------------------------------------------")
-    print(f"byron_start_time        : {byron_start_time}")
-    print(f"shelley_start_time      : {shelley_start_time}")
-    print(f"allegra_start_time      : {allegra_start_time}")
-    print(f"current_utc_time        : {current_time}")
-    print(f"last_byron_slot_no      : {last_byron_slot_no}")
-    print(f"last_shelley_slot_no    : {last_shelley_slot_no}")
-    print(f"last_allegra_slot_no    : {last_allegra_slot_no}")
-    print(f"latest_slot_no          : {latest_slot_no}")
-    print("----------------------------------------------------------------")
-
-    return last_byron_slot_no, last_shelley_slot_no, latest_slot_no
-
 
 def main():
     global NODE
@@ -527,109 +372,12 @@ def main():
 
     print(f"   ======================= Start node using node_tag: {node_tag} ====================")
     start_sync_time1 = get_current_date_time()
-    if "linux" in platform_system.lower() or "darwin" in platform_system.lower():
-        secs_to_start1 = start_node_unix(env, node_tag)
-
-    print(" - waiting for the node to sync")
-    (
-        newest_chunk1,
-        byron_sync_time_seconds1,
-        shelley_sync_time_seconds1,
-        allegra_sync_time_seconds1,
-        sync_details_dict1
-    ) = wait_for_node_to_sync(env, node_tag)
-
-    end_sync_time1 = get_current_date_time()
-    print(f"secs_to_start1            : {secs_to_start1}")
-    print(f"start_sync_time1          : {start_sync_time1}")
-    print(f"end_sync_time1            : {end_sync_time1}")
-    print(f"byron_sync_time_seconds1  : {byron_sync_time_seconds1}")
-    print(
-        f"byron_sync_time1  : {time.strftime('%H:%M:%S', time.gmtime(byron_sync_time_seconds1))}"
-    )
-    print(f"shelley_sync_time_seconds1: {shelley_sync_time_seconds1}")
-    print(
-        f"shelley_sync_time1: {time.strftime('%H:%M:%S', time.gmtime(shelley_sync_time_seconds1))}"
-    )
-    print(f"allegra_sync_time_seconds1: {allegra_sync_time_seconds1}")
-    print(
-        f"allegra_sync_time_seconds1: {time.strftime('%H:%M:%S', time.gmtime(allegra_sync_time_seconds1))}"
-    )
-
-    latest_block_no1 = get_current_tip(node_tag)[0]
-    latest_slot_no1 = get_current_tip(node_tag)[2]
-    sync_speed_bps1 = int(
-        latest_block_no1 / (
-                byron_sync_time_seconds1 + shelley_sync_time_seconds1 + allegra_sync_time_seconds1)
-    )
-    sync_speed_sps1 = int(
-        latest_slot_no1 / (
-                byron_sync_time_seconds1 + shelley_sync_time_seconds1 + allegra_sync_time_seconds1)
-    )
-    print(f"sync_speed_bps1   : {sync_speed_bps1}")
-    print(f"sync_speed_sps1   : {sync_speed_sps1}")
-
-    total_chunks1 = int(newest_chunk1.split(".")[0])
-    print(f"downloaded chunks1: {total_chunks1}")
-
-    (
-        cardano_cli_version2,
-        cardano_cli_git_rev2,
-        shelley_sync_time_seconds2,
-        total_chunks2,
-        latest_block_no2,
-        latest_slot_no2,
-        start_sync_time2,
-        end_sync_time2,
-        start_sync_time3,
-        sync_time_after_restart_seconds
-    ) = (None, None, None, None, None, None, None, None, None, None)
-    
-
-    chain_size = get_size(Path(CARDANO_NODE_TESTS_PATH) / "db")
+    secs_to_start1 = start_node_unix(env, node_tag)
 
     print("move to 'cardano_node_tests_path/scripts'")
     os.chdir(Path(CARDANO_NODE_TESTS_PATH) / "sync_tests")
     current_directory = Path.cwd()
-    print(f" - sync_tests listdir: {os.listdir(current_directory)}")
 
-    test_values = (
-        env,
-        node_tag,
-        tag_no2,
-        cardano_cli_version1,
-        cardano_cli_version2,
-        cardano_cli_git_rev1,
-        cardano_cli_git_rev2,
-        start_sync_time1,
-        end_sync_time1,
-        start_sync_time2,
-        end_sync_time2,
-        byron_sync_time_seconds1,
-        shelley_sync_time_seconds1,
-        allegra_sync_time_seconds1,
-        sync_time_after_restart_seconds,
-        total_chunks1,
-        total_chunks2,
-        latest_block_no1,
-        latest_block_no2,
-        latest_slot_no1,
-        latest_slot_no2,
-        secs_to_start1,
-        secs_to_start2,
-        platform_system,
-        platform_release,
-        platform_version,
-        chain_size,
-        json.dumps(sync_details_dict1),
-    )
-
-    print(f"test_values: {test_values}")
-
-    with open("sync_results.log", "w+") as file1:
-        file1.write(str(test_values))
-
-    current_directory = Path.cwd()
     print(f" - sync_tests listdir: {os.listdir(current_directory)}")
 
 
@@ -643,7 +391,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-e",
         "--environment",
-        help="the environment on which to run the tests - shelley_qa, testnet, staging or mainnet.",
+        help="the environment on which to run the tests - shelley_qa or mainnet.",
     )
 
     args = parser.parse_args()
