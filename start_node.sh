@@ -115,6 +115,6 @@ echo ""
 echo ""
 echo "Starting node."
 
-./cardano-node run --topology ${network}/${network}-topology.json --database-path ${network}/db --socket-path ${network}/node.socket --config ${network}/${network}-config.json &
+./cardano-node run --topology ${network}/${network}-topology.json --database-path ${network}/db --socket-path ${network}/node.socket --config ${network}/${network}-config.json >> node_logfile.log & 
 
 

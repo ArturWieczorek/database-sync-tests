@@ -20,7 +20,7 @@ jobs:
         env: [mainnet]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: checkout database-sync-tests repo
         uses: actions/checkout@v2
@@ -43,13 +43,6 @@ jobs:
       - name: run sync test
         run: |
           ./database-sync-tests/start_node.sh -n ${{ matrix.env }} -t "${{ github.event.inputs.node_tag }}"
-      - name: generate artifacts
-        uses: actions/upload-artifact@v2
-        if: always()
-        with:
-          name: node_logs__${{ matrix.os }}
-          path: database-sync-tests/logfile.log
-
       - name: checkout cardano-db-sync repo
         uses: actions/checkout@v2
         with:
@@ -82,11 +75,7 @@ jobs:
           ls -al || true
 
       - name: Select cabal version
-        run: |
-          case "$OS" in
-            Windows_NT)   echo "CABAL_VERSION=3.2.0.0"      >> $GITHUB_ENV;;
-            *)            echo "CABAL_VERSION=3.4.0.0-rc4"  >> $GITHUB_ENV;;
-          esac
+        run: echo "CABAL_VERSION=3.4.0.0-rc4"  >> $GITHUB_ENV
       - uses: haskell/actions/setup@v1
         id: setup-haskell
         with:
@@ -151,6 +140,7 @@ jobs:
           echo "List:"
           ls -l
           cd cardano-db-sync
+          cabal build cardano-db-sync-extended
 
       - name: Set up database user (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -164,3 +154,15 @@ jobs:
           ls -lR cardano-node
           cd database-sync-tests
           ./start_db_sync.sh ${{ matrix.env }}
+
+      - name: generate node artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: node_logs__${{ matrix.os }}
+          path: /home/runner/work/database-sync-tests/database-sync-tests/cardano-node/node_logfile.log
+
+      - name: generate db-sync artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: db_sync_logs__${{ matrix.os }}
+          path: /home/runner/work/database-sync-tests/database-sync-tests/cardano-db-sync/logs/*
