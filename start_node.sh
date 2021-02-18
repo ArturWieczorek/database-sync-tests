@@ -62,7 +62,7 @@ NODE_LATEST_TAG=${tag:-"${REPO_LATEST_TAG}"}
 echo ""
 echo "Downloading latest version of cardano-node tag: $NODE_LATEST_TAG"
 
-wget -q --show-progress "https://hydra.iohk.io/job/Cardano/cardano-node/cardano-node-linux/latest-finished/download/1/cardano-node-$NODE_LATEST_TAG-linux.tar.gz"
+wget -q "https://hydra.iohk.io/job/Cardano/cardano-node/cardano-node-linux/latest-finished/download/1/cardano-node-$NODE_LATEST_TAG-linux.tar.gz"
 
 echo ""
 echo "Unpacking and removing archive ..."
@@ -84,11 +84,11 @@ do
 	mkdir ${_environment}
 	cd ${_environment}
 	echo "${PWD}"
-	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-config.json
-	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-byron-genesis.json
-	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-shelley-genesis.json
-	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-topology.json
-	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-db-sync-config.json
+	wget -q  $NODE_CONFIGS_URL/${_environment}-config.json
+	wget -q  $NODE_CONFIGS_URL/${_environment}-byron-genesis.json
+	wget -q  $NODE_CONFIGS_URL/${_environment}-shelley-genesis.json
+	wget -q  $NODE_CONFIGS_URL/${_environment}-topology.json
+	wget -q  $NODE_CONFIGS_URL/${_environment}-db-sync-config.json
 	echo ""
 	cd ..
 done

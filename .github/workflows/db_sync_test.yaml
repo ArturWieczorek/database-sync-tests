@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       node_tag:
-        description: cardano-node version that will be used with db-sync
-        required: true
-      db_sync_tag:
-        description: cardano-db-sync version that will be used. By default the latest release will be used
+        description: cardano-node tag that will be used with db-sync; if not specified then latest released version will be used
         required: false
-        default: "None"
+        default: "1.25.0"
+      db_sync_branch:
+        description: cardano-db-sync branch that will be used
+        required: true
+        default: "release/8.0.x"
 
 jobs:
   setup_and_start_db_sync:
@@ -17,10 +18,10 @@ jobs:
       matrix:
         ghc: ["8.6.5"]
         os: [ubuntu-latest]
-        env: [mainnet]
+        env: [mainnet, shelley_qa, testnet]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 600
+    timeout-minutes: 700
     steps:
       - name: Checkout database-sync-tests repo
         uses: actions/checkout@v2
@@ -30,24 +31,18 @@ jobs:
       - name: Print selected tags for node and db-sync
         run: |
           echo "node_tag: ${{ github.event.inputs.node_tag }}"
-          echo "db_sync_tag: ${{ github.event.inputs.db_sync_tag }}"
+          echo "db_sync_branch: ${{ github.event.inputs.db_sync_branch }}"
 
       - name: Start node
         run: |
-          ./database-sync-tests/start_node.sh -e ${{ matrix.env }} -t "${{ github.event.inputs.node_tag }}"
+          ./database-sync-tests/start_node.sh -e ${{ matrix.env }} -t ${{ github.event.inputs.node_tag }}
 
       - name: Checkout cardano-db-sync repo
         uses: actions/checkout@v2
         with:
           repository: input-output-hk/cardano-db-sync
           path: cardano-db-sync
-
-      - name: cardano-db-sync - fetch all tags
-        run: |
-          cd cardano-db-sync
-          git checkout master
-          git pull origin master
-          git fetch --all --tags
+          ref: ${{ github.event.inputs.db_sync_branch }}
 
       - name: Select build directory
         run: |
@@ -92,13 +87,6 @@ jobs:
       - name: Cabal update
         run: cabal update
 
-      - name: Check directory structure
-        run: |
-          echo "I am here:"
-          echo $PWD
-          echo "List:"
-          ls -l
-
       - name: Configure Cabal
         run: |
           cd cardano-db-sync
@@ -126,6 +114,12 @@ jobs:
             cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}
             cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-
 
+      - name: Check directory structure
+        run: |
+          echo "I am here: $PWD"
+          echo "Dir listing:"
+          ls -l
+
       - name: Build cardano-db-sync-extended
         run: |
           cd cardano-db-sync
@@ -135,6 +129,7 @@ jobs:
         run: sudo -u postgres createuser --createdb --superuser runner
 
       - name: Setup and start cardano-db-sync-extended
+        timeout-minutes: 600
         run: |
           cd database-sync-tests
           ./start_db_sync.sh -e ${{ matrix.env }}
