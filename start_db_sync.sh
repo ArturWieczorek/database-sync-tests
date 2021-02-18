@@ -1,6 +1,8 @@
 #!/bin/bash
 
 environment=$1
+db_sync_logfile="logs/db_sync_logfile.log"
+db_sync_summary_logfile="logs/db_sync_summary.log"
 
 export CARDANO_NODE_SOCKET_PATH=/home/runner/work/database-sync-tests/database-sync-tests/cardano-node/${environment}/node.socket
 
@@ -27,48 +29,9 @@ elif [ "$environment" = "shelley_qa" ]
 	fi
 }
 
-network_param=$(get_network_param_value)
-
-cd ../cardano-db-sync
-mkdir logs
-
-db_sync_start_time=$(echo "$(date +'%d/%m/%Y %H:%M:%S')")  # format: 17/02/2021 23:42:12
-
-chmod 600 config/pgpass-${environment}
-PGPASSFILE=config/pgpass-${environment} scripts/postgresql-setup.sh --createdb
-
-PGPASSFILE=config/pgpass-${environment} cabal run cardano-db-sync-extended -- \
---config config/${environment}-config.yaml \
---socket-path ../cardano-node/${environment}/node.socket \
---state-dir ledger-state/${environment} \
---schema-dir schema/ >> logs/db_sync_logfile.log & 
-
-sleep 60
-
-echo "Before cat logs/db_sync_logfile.log"
-cat logs/db_sync_logfile.log
-echo "After cat logs/db_sync_logfile.log"
-
-
-
-function get_latest_db_synced_slot() {
-
-IN=$(tail -n 1 logs/db_sync_logfile.log)
-preformated_string=$(echo "$IN" | sed 's/^.*slot/slot/') # this will return: "slot 19999, block 20000, hash 683be7324c47df71e2a234639a26d7747f1501addbba778636e66f3a18a46db7"
-
-IFS=' ' read -ra ADDR <<< "$preformated_string"
-for i in "${!ADDR[@]}"; do
-	if [[ "${ADDR[$i]}" == *"slot"* ]]; then # check for this: "slot 19999," - from this we need to get the second part - slot number and remove comma
-    	slot_number=$(echo "${ADDR[$((i+1))]}"| sed 's/.$//') # use sed to remove comma at the end of slot number
-       	echo $slot_number
-    fi
-done
-}
-
-
 function get_block_from_tip() {
 
- ./../cardano-node/cardano-cli query tip ${network_param} |
+ ./../cardano-node/cardano-cli query tip $(get_network_param_value) |
  
 while read -r line
 do
@@ -79,6 +42,20 @@ do
 done
 }
 
+function get_latest_db_synced_slot() {
+	
+local log_filepath=$1
+IN=$(tail -n 1 $log_filepath)
+preformated_string=$(echo "$IN" | sed 's/^.*slot/slot/') # this will return: "slot 19999, block 20000, hash 683be7324c47df71e2a234639a26d7747f1501addbba778636e66f3a18a46db7"
+
+IFS=' ' read -ra ADDR <<< "$preformated_string"
+for i in "${!ADDR[@]}"; do
+	if [[ "${ADDR[$i]}" == *"slot"* ]]; then # we get the index $i for slot keyword - we know that slot number has ${i+1) position
+    	slot_number=$(echo "${ADDR[$((i+1))]}"| sed 's/.$//') # use sed to remove comma at the end of slot number
+       	echo $slot_number
+    fi
+done
+}
 
 function calculate_latest_node_slot_for_environment() {
 
@@ -108,44 +85,59 @@ then
 else:
     echo "" 
 fi
+}
+
+network_param=$(get_network_param_value)
+
+cd ../cardano-db-sync
+mkdir logs
+
+db_sync_start_time=$(echo "$(date +'%d/%m/%Y %H:%M:%S')")  # format: 17/02/2021 23:42:12
+
+chmod 600 config/pgpass-${environment}
+PGPASSFILE=config/pgpass-${environment} scripts/postgresql-setup.sh --createdb
+
+PGPASSFILE=config/pgpass-${environment} cabal run cardano-db-sync-extended -- \
+--config config/${environment}-config.yaml \
+--socket-path ../cardano-node/${environment}/node.socket \
+--state-dir ledger-state/${environment} \
+--schema-dir schema/ >> logs/db_sync_logfile.log & 
+
+sleep 60
 
 slots_in_epoch=432000
 current_time=$(date +'%s')
 current_slot=$(( (shelley_start_time_in_seconds - byron_start_time_in_seconds)/20  + current_time - shelley_start_time_in_seconds - slots_in_epoch/2))
 echo $current_slot
 
-}
 
-
-latest_db_synced_slot=$(get_latest_db_synced_slot)
+latest_node_slot=$(calculate_latest_node_slot_for_environment)
+latest_db_synced_slot=$(get_latest_db_synced_slot $db_sync_logfile)
 
 re='^[0-9]+$'
 while ! [[ $latest_db_synced_slot =~ $re ]] ; do
    echo "Not a slot number, waiting for proper log line that contains slot number..." 
    sleep 20
-   latest_db_synced_slot=$(get_latest_db_synced_slot)
+   latest_db_synced_slot=$(get_latest_db_synced_slot $db_sync_logfile)
 done
 
 tmp_latest_db_synced_slot=$latest_db_synced_slot
 
 
-latest_node_slot=$(calculate_latest_node_slot_for_environment)
-
 while [ $latest_db_synced_slot -lt 300000 ]
 do
-sleep 20
-latest_db_synced_slot=$(get_latest_db_synced_slot)
+	sleep 20
+	latest_db_synced_slot=$(get_latest_db_synced_slot $db_sync_logfile)
 
-if ! [[ $latest_db_synced_slot =~ $re ]] ; then
-	latest_db_synced_slot=$tmp_latest_db_synced_slot
-    continue
-fi
-
-echo "latest_db_synced_slot: $latest_db_synced_slot"
+	if ! [[ $latest_db_synced_slot =~ $re ]] ; then
+		latest_db_synced_slot=$tmp_latest_db_synced_slot
+    	continue
+	fi
+	echo "latest_db_synced_slot: $latest_db_synced_slot"
 done
 
 db_sync_end_time=$(echo "$(date +'%d/%m/%Y %H:%M:%S')")
 
-echo "db_sync_start_time: $db_sync_start_time" >> logs/db_sync_summary.log
-echo "db_sync_end_time: $db_sync_end_time" >> logs/db_sync_summary.log
-echo "latest_db_synced_slot: $latest_db_synced_slot" >> logs/db_sync_summary.log
+echo "db_sync_start_time: $db_sync_start_time" >> $db_sync_summary_logfile
+echo "db_sync_end_time: $db_sync_end_time" >> $db_sync_summary_logfile
+echo "latest_db_synced_slot: $latest_db_synced_slot" >> $db_sync_summary_logfile

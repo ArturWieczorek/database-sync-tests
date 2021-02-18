@@ -42,6 +42,7 @@ shift $((OPTIND-1))
 
 IOHK_ROOT_REPO="input-output-hk"
 NODE_REPO="${IOHK_ROOT_REPO}/cardano-node"
+NODE_LOGFILEPATH="node_logfile.log"
 
 get_latest_release() {
     curl --silent "https://api.github.com/repos/$1/releases/latest" | jq -r .tag_name
@@ -55,10 +56,8 @@ mkdir cardano-node
 cd cardano-node
 
 REPO_LATEST_TAG=$(get_latest_release ${NODE_REPO})
-
-
 NODE_LATEST_TAG=${tag:-"${REPO_LATEST_TAG}"}
-#ERA=${era:-"mary"}
+
 
 echo ""
 echo "Downloading latest version of cardano-node tag: $NODE_LATEST_TAG"
@@ -115,6 +114,4 @@ echo ""
 echo ""
 echo "Starting node."
 
-./cardano-node run --topology ${network}/${network}-topology.json --database-path ${network}/db --socket-path ${network}/node.socket --config ${network}/${network}-config.json >> node_logfile.log & 
-
-
+./cardano-node run --topology ${network}/${network}-topology.json --database-path ${network}/db --socket-path ${network}/node.socket --config ${network}/${network}-config.json >> $NODE_LOGFILEPATH &

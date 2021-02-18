@@ -4,15 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       node_tag:
-        description: node version to be used with db-sync
+        description: cardano-node version that will be used with db-sync
         required: true
       db_sync_tag:
-        description: db-sync version to be used. By default the latest release will be used
+        description: cardano-db-sync version that will be used. By default the latest release will be used
         required: false
         default: "None"
 
 jobs:
-  run_node:
+  setup_and_start_db_sync:
     strategy:
       matrix:
         ghc: ["8.6.5"]
@@ -20,31 +20,17 @@ jobs:
         env: [mainnet]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 3600
     steps:
       - name: checkout database-sync-tests repo
         uses: actions/checkout@v2
         with:
           path: database-sync-tests
 
-      - name: print test details
+      - name: Print selected tags for node and db-sync
         run: |
           echo "node_tag: ${{ github.event.inputs.node_tag }}"
-          echo "Show github.workspace"
-          echo ${{ github.workspace }}
-
-      - name: run actions/setup-python@v2
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-
-      - name: Install python dependencies
-        run: |
-          pip install requests
-          pip install psutil
-          pip install sqlite-utils>=2.18
-          sqlite-utils --version
-          pip install pandas
+          echo "db_sync_tag: ${{ github.event.inputs.db_sync_tag }}"
 
       - name: Start node
         run: |
@@ -70,7 +56,6 @@ jobs:
           echo "$HOME/.cabal/bin"                 >> $GITHUB_PATH
 
       - name: Install Postgres (Linux)
-        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libpq-dev libpq5 postgresql
@@ -97,7 +82,6 @@ jobs:
           cabal --version
 
       - name: Install build environment
-        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get -y install libsodium23 libsodium-dev
@@ -114,7 +98,7 @@ jobs:
           echo "List:"
           ls -l
 
-      - name: Configure cabal
+      - name: Configure Cabal
         run: |
           cd cardano-db-sync
           cabal configure --builddir="$CABAL_BUILDDIR" --write-ghc-environment-files=always
@@ -141,16 +125,15 @@ jobs:
             cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}
             cache-cabal-store-v1-${{ runner.os }}-${{ matrix.ghc }}-
 
-      - name: Build
+      - name: Build cardano-db-sync-extended
         run: |
           cd cardano-db-sync
           cabal build cardano-db-sync-extended
 
       - name: Set up database user (Linux)
-        if: matrix.os == 'ubuntu-latest'
         run: sudo -u postgres createuser --createdb --superuser runner
 
-      - name: Setup and start db-sync
+      - name: Setup and start cardano-db-sync-extended
         run: |
           cd database-sync-tests
           ./start_db_sync.sh ${{ matrix.env }}
@@ -159,10 +142,10 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: node_logs_${{ matrix.env }}
-          path: /home/runner/work/database-sync-tests/database-sync-tests/cardano-node/node_logfile.log
+          path: ${{ github.workspace }}/cardano-node/node_logfile.log
 
       - name: Generate db-sync artifacts
         uses: actions/upload-artifact@v2
         with:
           name: db_sync_logs_${{ matrix.env }}
-          path: /home/runner/work/database-sync-tests/database-sync-tests/cardano-db-sync/logs/*
+          path: ${{ github.workspace }}/cardano-db-sync/logs/*
