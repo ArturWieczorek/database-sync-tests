@@ -12,7 +12,7 @@ function usage() {
 
 Example:
 
-./start_node.sh -n shelley_qa
+./start_node.sh -n shelley_qa -t 1.25.0
 
 USE UNDERSCORES IN NETWORK NAMES !!!
 HEREDOC
