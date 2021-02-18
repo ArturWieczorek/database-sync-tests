@@ -20,9 +20,9 @@ jobs:
         env: [mainnet]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 3600
+    timeout-minutes: 600
     steps:
-      - name: checkout database-sync-tests repo
+      - name: Checkout database-sync-tests repo
         uses: actions/checkout@v2
         with:
           path: database-sync-tests
@@ -34,9 +34,9 @@ jobs:
 
       - name: Start node
         run: |
-          ./database-sync-tests/start_node.sh -n ${{ matrix.env }} -t "${{ github.event.inputs.node_tag }}"
+          ./database-sync-tests/start_node.sh -e ${{ matrix.env }} -t "${{ github.event.inputs.node_tag }}"
 
-      - name: checkout cardano-db-sync repo
+      - name: Checkout cardano-db-sync repo
         uses: actions/checkout@v2
         with:
           repository: input-output-hk/cardano-db-sync
@@ -88,10 +88,11 @@ jobs:
           sudo apt-get -y install libsystemd0 libsystemd-dev
           sudo apt-get -y remove --purge software-properties-common
           sudo apt-get -y autoremove
+
       - name: Cabal update
         run: cabal update
 
-      - name: Check current directory
+      - name: Check directory structure
         run: |
           echo "I am here:"
           echo $PWD
@@ -130,13 +131,13 @@ jobs:
           cd cardano-db-sync
           cabal build cardano-db-sync-extended
 
-      - name: Set up database user (Linux)
+      - name: Create database user
         run: sudo -u postgres createuser --createdb --superuser runner
 
       - name: Setup and start cardano-db-sync-extended
         run: |
           cd database-sync-tests
-          ./start_db_sync.sh ${{ matrix.env }}
+          ./start_db_sync.sh -e ${{ matrix.env }}
 
       - name: Generate node artifact
         uses: actions/upload-artifact@v2

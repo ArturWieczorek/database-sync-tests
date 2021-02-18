@@ -4,27 +4,27 @@ function usage() {
     cat << HEREDOC
 
     arguments:
-    -n          network - possible options: allegra, launchpad, mary_qa, mainnet, staging, testnet, shelley_qa
+    -e          environment - possible options: allegra, launchpad, mary_qa, mainnet, staging, testnet, shelley_qa
     -t          tag
 
     optional arguments:
-      -h, --help           show this help message and exit
+    -h        show this help message and exit
 
 Example:
 
-./start_node.sh -n shelley_qa -t 1.25.0
+./start_node.sh -e shelley_qa -t 1.25.0
 
-USE UNDERSCORES IN NETWORK NAMES !!!
+USE UNDERSCORES IN environment NAMES !!!
 HEREDOC
 }
 
-while getopts ":h:n:t:" o; do
+while getopts ":h:e:t:" o; do
     case "${o}" in
         h)
             usage
             ;;
-        n)
-            network=${OPTARG}
+        e)
+            environment=${OPTARG}
             ;;
         t)
             tag=${OPTARG}
@@ -73,22 +73,22 @@ rm "cardano-node-$NODE_LATEST_TAG-linux.tar.gz"
 NODE_CONFIGS_URL=$(curl -Ls -o /dev/null -w %{url_effective} https://hydra.iohk.io/job/Cardano/iohk-nix/cardano-deployment/latest-finished/download/1/index.html | sed 's|\(.*\)/.*|\1|')
 
 echo ""
-echo "Downloading node configuration files from $NODE_CONFIGS_URL for networks specified in script ..."
+echo "Downloading node configuration files from $NODE_CONFIGS_URL for environments specified in script ..."
 echo ""
 
-# Get latest configs for network(s) you need:
-# List of all current networks: "allegra" "launchpad" "mainnet" "mary_qa" "shelley_qa" "staging" "testnet"
+# Get latest configs for environment(s) you need:
+# List of all current environments: "allegra" "launchpad" "mainnet" "mary_qa" "shelley_qa" "staging" "testnet"
 
-for _network in ${network}
+for _environment in ${environment}
 do
-	mkdir ${_network}
-	cd ${_network}
+	mkdir ${_environment}
+	cd ${_environment}
 	echo "${PWD}"
-	wget -q --show-progress $NODE_CONFIGS_URL/${_network}-config.json
-	wget -q --show-progress $NODE_CONFIGS_URL/${_network}-byron-genesis.json
-	wget -q --show-progress $NODE_CONFIGS_URL/${_network}-shelley-genesis.json
-	wget -q --show-progress $NODE_CONFIGS_URL/${_network}-topology.json
-	wget -q --show-progress $NODE_CONFIGS_URL/${_network}-db-sync-config.json
+	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-config.json
+	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-byron-genesis.json
+	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-shelley-genesis.json
+	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-topology.json
+	wget -q --show-progress $NODE_CONFIGS_URL/${_environment}-db-sync-config.json
 	echo ""
 	cd ..
 done
@@ -114,4 +114,4 @@ echo ""
 echo ""
 echo "Starting node."
 
-./cardano-node run --topology ${network}/${network}-topology.json --database-path ${network}/db --socket-path ${network}/node.socket --config ${network}/${network}-config.json >> $NODE_LOGFILEPATH &
+./cardano-node run --topology ${environment}/${environment}-topology.json --database-path ${environment}/db --socket-path ${environment}/node.socket --config ${environment}/${environment}-config.json >> $NODE_LOGFILEPATH &

@@ -1,6 +1,51 @@
 #!/bin/bash
 
-environment=$1
+
+function usage() {
+    cat << HEREDOC
+
+    arguments:
+    -e          environment (network) - possible options: mainnet, shelley_qa
+    -t          tag
+    -b          branch
+
+    optional arguments:
+    -h          show this help message and exit
+
+Example:
+
+./start_db_sync.sh -e shelley_qa -t 1.25.0
+
+USE UNDERSCORES IN NETWORK NAMES !!!
+HEREDOC
+}
+
+while getopts ":h:e:t:b:" o; do
+    case "${o}" in
+        h)
+            usage
+            ;;
+        e)
+            environment=${OPTARG}
+            ;;
+        t)
+            tag=${OPTARG}
+            ;;
+        b)
+            branch=${OPTARG}
+            ;;
+        *)
+            echo "NO SUCH ARGUMENT: ${OPTARG}"
+            usage
+            ;;
+    esac
+done
+if [ $? != 0 ] || [ $# == 0 ] ; then
+    echo "ERROR: Error in command line arguments." >&2 ; usage; exit 1 ;
+fi
+shift $((OPTIND-1))
+
+#environment=$1
 db_sync_logfile="logs/db_sync_logfile.log"
 db_sync_summary_logfile="logs/db_sync_summary.log"
 
@@ -43,7 +88,7 @@ done
 }
 
 function get_latest_db_synced_slot() {
-	
+
 local log_filepath=$1
 IN=$(tail -n 1 $log_filepath)
 preformated_string=$(echo "$IN" | sed 's/^.*slot/slot/') # this will return: "slot 19999, block 20000, hash 683be7324c47df71e2a234639a26d7747f1501addbba778636e66f3a18a46db7"
@@ -85,6 +130,11 @@ then
 else:
     echo "" 
 fi
+
+slots_in_epoch=432000
+current_time=$(date +'%s')
+current_slot=$(( (shelley_start_time_in_seconds - byron_start_time_in_seconds)/20  + current_time - shelley_start_time_in_seconds - slots_in_epoch/2))
+echo $current_slot
 }
 
 network_param=$(get_network_param_value)
@@ -105,13 +155,8 @@ PGPASSFILE=config/pgpass-${environment} cabal run cardano-db-sync-extended -- \
 
 sleep 60
 
-slots_in_epoch=432000
-current_time=$(date +'%s')
-current_slot=$(( (shelley_start_time_in_seconds - byron_start_time_in_seconds)/20  + current_time - shelley_start_time_in_seconds - slots_in_epoch/2))
-echo $current_slot
-
-
 latest_node_slot=$(calculate_latest_node_slot_for_environment)
+echo "latest_node_slot: $latest_node_slot"
 latest_db_synced_slot=$(get_latest_db_synced_slot $db_sync_logfile)
 
 re='^[0-9]+$'
