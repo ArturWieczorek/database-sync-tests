@@ -1,6 +1,0 @@
-[db-sync-node:Info:24681] [2021-02-18 19:59:17.41 UTC] insertShelleyBlock(Mary): epoch 2223, slot 15995477, block 752417, hash 09e3ce6661f8476d4307f2bcfe0ba9c73ac932d75ad03fa13a7a150bfb09b21e
-[db-sync-node:Info:24681] [2021-02-18 19:59:20.34 UTC] insertShelleyBlock(Mary): epoch 2223, slot 15995480, block 752418, hash b60584fd44f7e0dd2fd30f83e34320f15d342edb2debdd69aeeda8d13e0e93a4
-[db-sync-node:Info:24681] [2021-02-18 19:59:21.48 UTC] insertShelleyBlock(Mary): epoch 2223, slot 15995481, block 752419, hash 6769368c51e9da1e7215f21d334d7285bde19d00a1b56fe9a7b913dc81dc7cad
-[db-sync-node:Info:52] [2021-02-18 19:38:50.09 UTC] insertByronBlock: slot 9999, block 10000, hash e6a510ff8ae57fdc1c9d66692fbf32502e00e3f88ad94471f0c851b5ec5eb847
-[db-sync-node:Info:52] [2021-02-18 19:38:55.79 UTC] insertByronBlock: slot 14999, block 15000, hash d3afa463873117e7ade566432a3002e67609eab841e73b09ce9bd4f8fa77b02e
-[db-sync-node:Info:52] [2021-02-18 19:39:02.22 UTC] insertByronBlock: slot 19999, block 20000, hash 683be7324c47df71e2a234639a26d7747f1501addbba778636e66f3a18a46db7

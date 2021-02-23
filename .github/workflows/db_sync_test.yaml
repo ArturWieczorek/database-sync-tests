@@ -23,6 +23,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 700
     steps:
+
+      - name: Install systat
+        run: |
+          sudo apt-get update
+          sudo apt-get install sysstat
+
       - name: Checkout database-sync-tests repo
         uses: actions/checkout@v2
         with:
