@@ -16,9 +16,9 @@ jobs:
   setup_and_start_db_sync:
     strategy:
       matrix:
-        ghc: ["8.6.5"]
+        ghc: ["8.10.4"]
         os: [ubuntu-latest]
-        env: [mainnet, shelley_qa, testnet]
+        env: [shelley_qa, testnet]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 700
@@ -64,6 +64,8 @@ jobs:
 
       - name: Check if postgres is running
         run: |
+          sudo apt-get update
+          sudo apt-get install net-tools
           sleep 20
           netstat -an
           ls -al /var/run/postgresql/.s.PGSQL.5432 || true
